@@ -33,7 +33,7 @@ nvm_install_dir() {
 }
 
 nvm_latest_version() {
-  nvm_echo "v0.39.3"
+  nvm_echo "v0.40.1"
 }
 
 nvm_profile_is_bash_or_zsh() {
@@ -52,12 +52,28 @@ nvm_profile_is_bash_or_zsh() {
 #
 # Outputs the location to NVM depending on:
 # * The availability of $NVM_SOURCE
+# * The presence of $NVM_INSTALL_GITHUB_REPO
 # * The method used ("script" or "git" in the script, defaults to "git")
 # NVM_SOURCE always takes precedence unless the method is "script-nvm-exec"
 #
 nvm_source() {
   local NVM_GITHUB_REPO
   NVM_GITHUB_REPO="${NVM_INSTALL_GITHUB_REPO:-nvm-sh/nvm}"
+  if [ "${NVM_GITHUB_REPO}" != 'nvm-sh/nvm' ]; then
+    { nvm_echo >&2 "$(cat)" ; } << EOF
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE REPO IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+
+The default repository for this install is \`nvm-sh/nvm\`,
+but the environment variables \`\$NVM_INSTALL_GITHUB_REPO\` is
+currently set to \`${NVM_GITHUB_REPO}\`.
+
+If this is not intentional, interrupt this installation and
+verify your environment variables.
+EOF
+  fi
   local NVM_VERSION
   NVM_VERSION="${NVM_INSTALL_VERSION:-$(nvm_latest_version)}"
   local NVM_METHOD
@@ -280,17 +296,17 @@ nvm_detect_profile() {
       DETECTED_PROFILE="$HOME/.bash_profile"
     fi
   elif [ "${SHELL#*zsh}" != "$SHELL" ]; then
-    if [ -f "$HOME/.zshrc" ]; then
-      DETECTED_PROFILE="$HOME/.zshrc"
-    elif [ -f "$HOME/.zprofile" ]; then
-      DETECTED_PROFILE="$HOME/.zprofile"
+    if [ -f "${ZDOTDIR:-${HOME}}/.zshrc" ]; then
+      DETECTED_PROFILE="${ZDOTDIR:-${HOME}}/.zshrc"
+    elif [ -f "${ZDOTDIR:-${HOME}}/.zprofile" ]; then
+      DETECTED_PROFILE="${ZDOTDIR:-${HOME}}/.zprofile"
     fi
   fi
 
   if [ -z "$DETECTED_PROFILE" ]; then
     for EACH_PROFILE in ".profile" ".bashrc" ".bash_profile" ".zprofile" ".zshrc"
     do
-      if DETECTED_PROFILE="$(nvm_try_profile "${HOME}/${EACH_PROFILE}")"; then
+      if DETECTED_PROFILE="$(nvm_try_profile "${ZDOTDIR:-${HOME}}/${EACH_PROFILE}")"; then
         break
       fi
     done
@@ -342,7 +358,7 @@ nvm_check_global_modules() {
     command printf %s\\n "$NPM_GLOBAL_MODULES"
     nvm_echo '=> If you wish to uninstall them at a later point (or re-install them under your'
     # shellcheck disable=SC2016
-    nvm_echo '=> `nvm` Nodes), you can remove them from the system Node as follows:'
+    nvm_echo '=> `nvm` node installs), you can remove them from the system Node as follows:'
     nvm_echo
     nvm_echo '     $ nvm use system'
     nvm_echo '     $ npm uninstall -g a_module'
